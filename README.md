@@ -30,3 +30,26 @@ Add to `deleted.txt` UIDs of events you want to delete.
 1. Delete event from calendar
 2. Watch for `DELETE` request in log
 3. Add UUId to `deleted.txt`, e.g. for `DELETE /calendars/A-B-C-D/ff-aa-ee.ics` add `ff-aa-ee`
+
+## Systemd example
+
+Use `systemctl --user` to create service for current user.
+Local proxy is the most secure way to use this proxy.
+
+```bash
+systemctl --user cat caldav.service 
+# /home/ernado/.config/systemd/user/caldav.service
+[Unit]
+Description=CalDav Proxy
+StartLimitIntervalSec=0
+
+[Service]
+ExecStart=/src/ernado/calproxy/calproxy --listen localhost:8312
+Type=simple
+RestartSec=3
+Restart=always
+WorkingDirectory=/src/ernado/calproxy
+
+[Install]
+WantedBy=default.target
+```
