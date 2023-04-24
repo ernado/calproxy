@@ -28,6 +28,7 @@ func main() {
 		secure  bool
 		cert    string
 		key     string
+		rewrite bool
 	}
 	flag.StringVar(&arg.listen, "listen", "localhost:8080", "listen address")
 	flag.StringVar(&arg.output, "output", "output", "directory to store requests/responses")
@@ -37,6 +38,7 @@ func main() {
 	flag.StringVar(&arg.key, "key", "server.key", "path to key")
 	flag.StringVar(&arg.deleted, "deleted", "deleted.txt", "file with deleted UIDs")
 	flag.BoolVar(&arg.dump, "dump", false, "dump requests/responses")
+	flag.BoolVar(&arg.rewrite, "rewrite", true, "rewrite events")
 
 	flag.Parse()
 
@@ -126,7 +128,7 @@ func main() {
 
 		var out bytes.Buffer
 
-		if bytes.Contains(body, []byte("ns0:multistatus")) {
+		if bytes.Contains(body, []byte("ns0:multistatus")) && arg.rewrite {
 			fmt.Println(" -# Found multi-status response")
 			out.WriteString(`<?xml version="1.0" encoding="utf-8" ?>`)
 			status, err := DecodeMultiStatus(body)
@@ -147,13 +149,22 @@ func main() {
 				base = strings.TrimSuffix(base, ".ics")
 				if _, ok := deleted[base]; ok {
 					fmt.Printf(" -#  Deleted: %s\n", base)
+				} else {
 					filtered = append(filtered, s)
 				}
 			}
+			status.Responses = filtered
 			if err := xml.NewEncoder(&out).Encode(status); err != nil {
 				log.Printf("Error encoding MultiStatus: %v", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
+			}
+			if arg.dump {
+				if err := os.WriteFile(dumpFilePrefix+".res.xml", out.Bytes(), 0644); err != nil {
+					log.Printf("Error writing request dump: %v", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 			}
 		} else {
 			out.Write(body)
