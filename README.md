@@ -24,3 +24,9 @@ Usage of ./calproxy:
 ```
 
 Add to `deleted.txt` UIDs of events you want to delete.
+
+## Adding UUId 
+
+1. Delete event from calendar
+2. Watch for `DELETE` request in log
+3. Add UUId to `deleted.txt`, e.g. for `DELETE /calendars/A-B-C-D/ff-aa-ee.ics` add `ff-aa-ee`
