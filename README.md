@@ -5,6 +5,8 @@ Proxy for CALDAV clients to force delete events.
 Usage:
 ```bash
 Usage of ./calproxy:
+  -append
+        automatically append deleted UIDs to file
   -cert string
         path to certificate (default "server.crt")
   -deleted string
@@ -17,6 +19,8 @@ Usage of ./calproxy:
         listen address (default "localhost:8080")
   -output string
         directory to store requests/responses (default "output")
+  -rewrite
+        rewrite events (default true)
   -secure
         use https listener
   -target string
@@ -24,6 +28,8 @@ Usage of ./calproxy:
 ```
 
 Add to `deleted.txt` UIDs of events you want to delete.
+
+This can be done automatically if `-rewrite` flag is `true` which is on by default.
 
 ## Adding UUId 
 

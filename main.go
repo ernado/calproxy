@@ -16,7 +16,47 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/go-faster/errors"
 )
+
+func appendToFile(name, line string) error {
+	buf, err := os.ReadFile(name)
+	if err != nil {
+		return errors.Wrap(err, "read file")
+	}
+
+	var lines []string
+	s := bufio.NewScanner(bytes.NewReader(buf))
+	for s.Scan() {
+		lines = append(lines, s.Text())
+	}
+	if err := s.Err(); err != nil {
+		return errors.Wrap(err, "scan file")
+	}
+
+	var found bool
+	for _, l := range lines {
+		if strings.Contains(l, line) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		lines = append(lines, line)
+	}
+
+	var b bytes.Buffer
+	for _, l := range lines {
+		_, _ = fmt.Fprintln(&b, l)
+	}
+
+	if err := os.WriteFile(name, b.Bytes(), 0644); err != nil {
+		return errors.Wrap(err, "write file")
+	}
+
+	return nil
+}
 
 func main() {
 	var arg struct {
@@ -29,6 +69,7 @@ func main() {
 		cert    string
 		key     string
 		rewrite bool
+		append  bool
 	}
 	flag.StringVar(&arg.listen, "listen", "localhost:8080", "listen address")
 	flag.StringVar(&arg.output, "output", "output", "directory to store requests/responses")
@@ -39,6 +80,7 @@ func main() {
 	flag.StringVar(&arg.deleted, "deleted", "deleted.txt", "file with deleted UIDs")
 	flag.BoolVar(&arg.dump, "dump", false, "dump requests/responses")
 	flag.BoolVar(&arg.rewrite, "rewrite", true, "rewrite events")
+	flag.BoolVar(&arg.append, "append", false, "automatically append deleted UIDs to file")
 
 	flag.Parse()
 
@@ -66,6 +108,17 @@ func main() {
 			log.Printf("Error dumping request: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+
+		if r.Method == http.MethodDelete && strings.HasSuffix(r.URL.Path, ".ics") {
+			base := strings.TrimSuffix(path.Base(r.URL.Path), ".ics")
+			if err := appendToFile(arg.deleted, base); err != nil {
+				log.Printf("Error appending to file: %v", err)
+
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			fmt.Println("  -# Appended", base, "to", arg.deleted)
 		}
 
 		u, err := url.Parse(arg.target)
@@ -129,7 +182,7 @@ func main() {
 		var out bytes.Buffer
 
 		if bytes.Contains(body, []byte("ns0:multistatus")) && arg.rewrite {
-			fmt.Println(" -# Found multi-status response")
+			fmt.Println("  -# Found multi-status response")
 			out.WriteString(`<?xml version="1.0" encoding="utf-8" ?>`)
 			status, err := DecodeMultiStatus(body)
 			if err != nil {
@@ -148,7 +201,7 @@ func main() {
 				base := path.Base(u.Path)
 				base = strings.TrimSuffix(base, ".ics")
 				if _, ok := deleted[base]; ok {
-					fmt.Printf(" -#  Deleted: %s\n", base)
+					fmt.Printf("  -#  Deleted: %s\n", base)
 				} else {
 					filtered = append(filtered, s)
 				}
