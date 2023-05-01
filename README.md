@@ -29,7 +29,7 @@ Usage of ./calproxy:
 
 Add to `deleted.txt` UIDs of events you want to delete.
 
-This can be done automatically if `-rewrite` flag is `true` which is on by default.
+This can be done automatically if `-append` flag is `true` which is on by default.
 
 ## Adding UUId 
 

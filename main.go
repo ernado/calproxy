@@ -191,6 +191,7 @@ func main() {
 				return
 			}
 			var filtered []StatusResponse
+			var modified bool
 			for _, s := range status.Responses {
 				u, err := url.Parse(s.URI)
 				if err != nil {
@@ -202,15 +203,22 @@ func main() {
 				base = strings.TrimSuffix(base, ".ics")
 				if _, ok := deleted[base]; ok {
 					fmt.Printf("  -#  Deleted: %s\n", base)
+					modified = true
 				} else {
 					filtered = append(filtered, s)
 				}
 			}
-			status.Responses = filtered
-			if err := xml.NewEncoder(&out).Encode(status); err != nil {
-				log.Printf("Error encoding MultiStatus: %v", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
+			if modified {
+				status.Responses = filtered
+				if err := xml.NewEncoder(&out).Encode(status); err != nil {
+					log.Printf("Error encoding MultiStatus: %v", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			} else {
+				fmt.Println("  -# Not modified")
+				out.Reset()
+				out.Write(body)
 			}
 			if arg.dump {
 				if err := os.WriteFile(dumpFilePrefix+".res.xml", out.Bytes(), 0644); err != nil {
@@ -223,7 +231,7 @@ func main() {
 			out.Write(body)
 		}
 
-		w.Write(out.Bytes())
+		_, _ = w.Write(out.Bytes())
 	})
 
 	proxyServer := &http.Server{
