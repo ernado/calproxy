@@ -70,6 +70,7 @@ func main() {
 		key     string
 		rewrite bool
 		append  bool
+		debug   bool
 	}
 	flag.StringVar(&arg.listen, "listen", "localhost:8080", "listen address")
 	flag.StringVar(&arg.output, "output", "output", "directory to store requests/responses")
@@ -81,6 +82,7 @@ func main() {
 	flag.BoolVar(&arg.dump, "dump", false, "dump requests/responses")
 	flag.BoolVar(&arg.rewrite, "rewrite", true, "rewrite events")
 	flag.BoolVar(&arg.append, "append", false, "automatically append deleted UIDs to file")
+	flag.BoolVar(&arg.debug, "debug", false, "debug mode (also print auth)")
 
 	flag.Parse()
 
@@ -108,6 +110,9 @@ func main() {
 			log.Printf("Error dumping request: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+		if user, pass, ok := r.BasicAuth(); ok && arg.debug {
+			fmt.Printf("(%s:%s) ", user, pass)
 		}
 
 		if r.Method == http.MethodDelete && strings.HasSuffix(r.URL.Path, ".ics") {
